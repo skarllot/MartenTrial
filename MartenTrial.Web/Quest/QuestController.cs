@@ -5,34 +5,31 @@ using Marten;
 using MartenTrial.Common.MediatR;
 using MartenTrial.Model.Quest.Start;
 using MartenTrial.Model.Quest.Views;
-using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
-namespace MartenTrial.Web.Controllers
+namespace MartenTrial.Web.Quest
 {
     [ApiController]
     [Route("[controller]")]
     public class QuestController
         : ControllerBase
     {
-        private readonly ISender sender;
-        private readonly ScopedNotificationDispatcher dispatcher;
+        private readonly IAsyncSender sender;
         private readonly IDocumentStore store;
 
-        public QuestController(ISender sender, ScopedNotificationDispatcher dispatcher, IDocumentStore store)
+        public QuestController(IAsyncSender sender, IDocumentStore store)
         {
             this.sender = sender;
-            this.dispatcher = dispatcher;
             this.store = store;
         }
 
         [HttpPost("start")]
-        public async Task<Guid> Start(StartQuest request, CancellationToken cancellationToken)
+        public async Task<StartQuestResponse> Start(StartQuestRequest request, CancellationToken cancellationToken)
         {
-            var eventPromise = dispatcher.WaitEventAsync<QuestStarted>(n => n.Name == request.Name);
-            await sender.Send(request, cancellationToken);
+            var command = StartQuest.Create(request.Name);
+            var questStarted = await sender.SendAsync<QuestStarted>(command, cancellationToken);
 
-            return (await eventPromise).QuestId;
+            return new StartQuestResponse(questStarted.QuestId);
         }
 
         [HttpGet]

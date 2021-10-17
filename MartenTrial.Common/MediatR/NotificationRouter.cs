@@ -1,12 +1,13 @@
 using System.Threading;
 using System.Threading.Tasks;
+using MartenTrial.Common.Messaging;
 using MediatR;
 
 namespace MartenTrial.Common.MediatR
 {
     internal sealed class NotificationRouter<TNotification>
         : INotificationHandler<TNotification>
-        where TNotification : class, INotification
+        where TNotification : class, ITraceableNotification
     {
         private readonly ScopedNotificationDispatcher dispatcher;
 

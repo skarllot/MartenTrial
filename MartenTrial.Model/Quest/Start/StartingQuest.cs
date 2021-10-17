@@ -1,7 +1,6 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Marten;
-using MartenTrial.Common;
 using MartenTrial.Common.MediatR;
 using MediatR;
 
@@ -23,7 +22,7 @@ namespace MartenTrial.Model.Quest.Start
         {
             await using var session = store.LightweightSession();
 
-            var quest = Quest.Start(request.Name);
+            var quest = Quest.Start(request);
 
             session.Events.StartStream<Quest>(quest.Id, quest.GetEvents());
             await session.SaveChangesAsync(cancellationToken);

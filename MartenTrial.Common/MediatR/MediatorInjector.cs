@@ -15,21 +15,31 @@ namespace MartenTrial.Common.MediatR
         {
             services.TryAddTransient<ServiceFactory>(p => p.GetRequiredService);
             services.TryAdd(new ServiceDescriptor(typeof(IMediator), typeof(Mediator), lifetime));
-            services.TryAdd(new ServiceDescriptor(typeof(ISender), static sp => sp.GetRequiredService<IMediator>(), lifetime));
-            services.TryAdd(new ServiceDescriptor(typeof(IPublisher), static sp => sp.GetRequiredService<IMediator>(), lifetime));
+            services.TryAdd(new ServiceDescriptor(typeof(IAsyncSender), typeof(AsyncMediator), lifetime));
+            services.TryAdd(
+                new ServiceDescriptor(
+                    typeof(ISender),
+                    static sp => sp.GetRequiredService<IMediator>(),
+                    lifetime));
+            services.TryAdd(
+                new ServiceDescriptor(
+                    typeof(IPublisher),
+                    static sp => sp.GetRequiredService<IMediator>(),
+                    lifetime));
 
-            services.TryAdd(new ServiceDescriptor(typeof(ScopedNotificationDispatcher),
-                typeof(ScopedNotificationDispatcher), lifetime));
+            services.TryAdd(
+                new ServiceDescriptor(
+                    typeof(ScopedNotificationDispatcher),
+                    typeof(ScopedNotificationDispatcher),
+                    lifetime));
+
+            services.TryAdd(
+                new ServiceDescriptor(
+                    typeof(INotificationHandler<>),
+                    typeof(NotificationRouter<>),
+                    lifetime));
 
             return services;
-        }
-
-        public static IServiceCollection AddNotificationRouter<TNotification>(
-            this IServiceCollection services,
-            ServiceLifetime lifetime = ServiceLifetime.Singleton)
-            where TNotification : class, INotification
-        {
-            return services.TryAddAbstractions<NotificationRouter<TNotification>>(lifetime);
         }
     }
 }

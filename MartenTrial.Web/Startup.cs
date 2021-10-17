@@ -25,29 +25,35 @@ namespace MartenTrial.Web
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers();
-            services.AddSwaggerGen(c =>
-            {
-                c.SwaggerDoc("v1", new OpenApiInfo { Title = "MartenTrial.Web", Version = "v1" });
-            });
+            services.AddSwaggerGen(
+                c => { c.SwaggerDoc("v1", new OpenApiInfo { Title = "MartenTrial.Web", Version = "v1" }); });
 
-            services.AddMarten(options =>
-            {
-                options.Connection(Configuration.GetConnectionString("postgres"));
-
-                if (Hosting.IsDevelopment())
+            services.AddMarten(
+                options =>
                 {
-                    options.AutoCreateSchemaObjects = AutoCreate.All;
+                    options.Connection(Configuration.GetConnectionString("postgres"));
+
+                    if (Hosting.IsDevelopment())
+                    {
+                        options.AutoCreateSchemaObjects = AutoCreate.All;
+                    }
+
                     options.DatabaseSchemaName = "projection";
                     options.Events.DatabaseSchemaName = "stream";
                     options.Events.MetadataConfig.CausationIdEnabled = true;
                     options.Events.MetadataConfig.CorrelationIdEnabled = true;
-                }
-            });
+
+                    options.Policies.ForAllDocuments(
+                        x =>
+                        {
+                            x.Metadata.CausationId.Enabled = true;
+                            x.Metadata.CorrelationId.Enabled = true;
+                        });
+                });
 
             services
                 .AddMediatR()
-                .AddQuestHandlers()
-                .AddEventHandlers();
+                .AddQuestHandlers();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

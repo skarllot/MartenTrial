@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
-using MediatR;
+using MartenTrial.Common.Messaging;
 using Validation;
 
 namespace MartenTrial.Common.MediatR
@@ -10,18 +10,18 @@ namespace MartenTrial.Common.MediatR
     {
         private readonly ConcurrentDictionary<Type, ConcurrentDictionary<object, Operation>> observers = new();
 
-        public Task<TNotification> WaitEventAsync<TNotification>(Func<TNotification, bool> filter)
-            where TNotification : class, INotification
+        public Task<TNotification> WaitEventAsync<TNotification>(Guid causation)
+            where TNotification : class, ITraceableNotification
         {
             var typeObservers = observers
                 .GetOrAdd(typeof(TNotification), static _ => new ConcurrentDictionary<object, Operation>());
 
-            var operation = Operation<TNotification>.RegisterNew(typeObservers, filter);
+            var operation = Operation<TNotification>.RegisterNew(typeObservers, causation);
             return operation.Promise;
         }
 
         internal void Notify<TNotification>(TNotification notification)
-            where TNotification : class, INotification
+            where TNotification : class, ITraceableNotification
         {
             if (!observers.TryGetValue(typeof(TNotification), out var typeObservers))
             {
@@ -41,16 +41,16 @@ namespace MartenTrial.Common.MediatR
 
         private sealed class Operation<TNotification>
             : Operation
-            where TNotification : class, INotification
+            where TNotification : class, ITraceableNotification
         {
             private readonly ConcurrentDictionary<object, Operation> registry;
-            private readonly Func<TNotification, bool> filter;
+            private readonly Guid causation;
             private readonly TaskCompletionSource<TNotification> completionSource;
 
-            private Operation(ConcurrentDictionary<object, Operation> registry, Func<TNotification, bool> filter)
+            private Operation(ConcurrentDictionary<object, Operation> registry, Guid causation)
             {
                 this.registry = registry;
-                this.filter = filter;
+                this.causation = causation;
                 completionSource = new TaskCompletionSource<TNotification>(
                     TaskCreationOptions.RunContinuationsAsynchronously);
             }
@@ -59,9 +59,9 @@ namespace MartenTrial.Common.MediatR
 
             public static Operation<TNotification> RegisterNew(
                 ConcurrentDictionary<object, Operation> registry,
-                Func<TNotification, bool> filter)
+                Guid causation)
             {
-                var operation = new Operation<TNotification>(registry, filter);
+                var operation = new Operation<TNotification>(registry, causation);
                 registry.TryAdd(operation, operation);
                 return operation;
             }
@@ -74,7 +74,7 @@ namespace MartenTrial.Common.MediatR
 
             public void Notify(TNotification notification)
             {
-                if (!filter(notification))
+                if (notification.Causation != causation)
                 {
                     return;
                 }
